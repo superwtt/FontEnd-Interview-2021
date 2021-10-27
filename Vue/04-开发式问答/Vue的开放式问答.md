@@ -30,10 +30,133 @@
 
 ### Vue项目中你遇到哪些坑？
 
-1. 数据更新了，页面不渲染
+1. 数据更新了，页面不渲染：
    + 如果是对象，把对象里每个属性都在data里声明一下，或者this.$set对象的属性，this.$forceUpdate强制更新
-   + 如果是数组，监听不到下标的变化
-2. 页面缓存
-3. axios请求，post的方式数据一直传不到后端那边
-4. 路由传参的坑
+   + 如果是数组，监听不到下标的变化，可以使用this.$forceUpdate强制更新一下
+   
+2. 页面缓存，有个填写信息的页面，需要填写一部分信息，进入其他页面，再返回的时候，页面上填写的信息已经被销毁了，解决办法：
+
+   + 使用Vue的 keep-alive 来完成页面的缓存
+
+3. axios请求，post的方式数据一直传不到后端那边：
+
+   + 原因：
+
+     + 后端的注解使用了@RequestParam，意思是只能从请求的地址中获取参数，也就是只能从username=admin&password=admin这种字符串中解析出参数
+     + post请求的两种传参方式data：{}，或者直接{}，在axios源码中，都会把Content-Type设置成application/json;charset=UTF-8，并且使用JSON.stringify序列化请求参数
+     + 我们请求的Content-type被axios默认行为设置成了application/json;charset=UTF-8
+     + 这就与我们服务器端要求的'Content-Type': 'application/x-www-form-urlencoded'以及@RequestParam不符合了
+
+   + 解决：
+
+     + URLSearchParams，主要用来处理URL上参数串的，主要处理形如AAA=BBB&CCC=DDD
+
+       ```javascript
+       // main.js里
+       import axios from 'axios';
+       axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
+       Vue.prototype.$axios = axios;
+       
+       // 在组件vue里
+       var params = new URLSearchParams();
+       params.append('key1', 'value1');       //你要传给后台的参数值 key/value
+       params.append('key2', 'value2');
+       params.append('key3', 'value3');
+       this.$axios({
+           method: 'post',
+           url:url,
+           data:params
+       }).then((res)=>{
+           
+       });
+       ```
+
+     + 使用qs包裹请求参数
+
+       ```javascript
+       let postData = this.$qs.stringify({
+           key1:value1,
+           key2:value2,
+           key3:value3,
+       });
+       // var a = {name:'hehe',age:10};
+       // qs.stringify(a); 'name=hehe&age=10'
+       // JSON.stringify(a) '{"name":"hehe","age":10}'
+       ```
+
+     + 使用axios请求时，有data和params两种方式，默认都是使用data的方式，是直接把 json 放到请求体中提交到后端的，往往后端接收参数用的是 `@RequestParam`（通过字符串中解析出参数）需要后端修改注解成@RequestBody才行
+
+       
+
+4. 路由传参的坑：使用路由传参，当本页面刷新的时候，页面上是没有参数的，因为参数是从上个页面带过来的
+
+   + 使用缓存或者vuex解决
+
+
+
+---
+
+### Request payload和form data的区别
+
+FormData和Payload是浏览器传输给后端接口的两种内容格式，这两种方式浏览器是通过Content-Type来进行区分的，如果是 application/x-www-form-urlencoded的话，则为formdata方式，如果是application/json或multipart/form-data的话，则为 request payload
+
+
+
+Request payload
+对于 Request Payload 请求， 必须加 @RequestBody 才能将请求正文解析到对应的 bean 中，且只能通过 request.getReader() 来获取请求正文内容
+Form Data
+无需任何注解，springmvc 会自动使用 MessageConverter 将请求参数解析到对应的 bean，且通过 request.getParameter(…) 能获取请求参数
+我自己后端代码就是因为没有使用 request.getReader() 来获取，才出现的问题
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
