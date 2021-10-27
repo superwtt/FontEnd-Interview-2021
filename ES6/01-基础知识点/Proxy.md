@@ -76,6 +76,24 @@ var newProxy = new Proxy(target,handler);
 
    + Object.defineProperty可以监听数组的变化，但是对push、shift、pop、unshift进行响应，Vue中通过重写Array上的方法实现监听
 
+     ```javascript
+     const arrayProto = Array.prototype;
+     const arrayMethods = Object.create(arrayProto)
+     ['push','pop','shift','unshift','splice','sort','reverse'].forEach(method=>{
+       const original = arrayProto[method];
+       Object.defineProperty(arrayMethods,methods,{
+         value: function mutaor(...args){
+           return original.apply(this,args);
+         },
+         enumerable: false,
+         writable: true,
+         configurable: true
+       })
+     })
+     ```
+
+     
+
    + 对于新增的数组项，Object.defineProperty无法监听到
 
      ```javascript
