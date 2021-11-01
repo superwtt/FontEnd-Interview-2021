@@ -16,11 +16,37 @@ var newProxy = new Proxy(target,handler);
 // Object.defineProperty(target, key, sharedPropertyDefinition)
 ```
 
+##### 语法解析
+
+1. `Object.defineProperty`
+
+   ```javascript
+   Object.defineProperty(data,'count',{
+      get(){},
+      set(){} 
+   })
+   ```
+
+   <font style="color:red">必须要事先知道拦截的key是什么，这也就是为什么Vue2.0中无法监听到新增属性变化的原因</font>
+
+2. `Proxy`
+
+   ```javascript
+   new Proxy(data,{
+       get(key){},
+       set(key,value){}
+   })
+   ```
+
+   <font style="color:blue">可以看到，根本不需要关心具体的key，它拦截的是修改data上的任意key和读取data上的任意key。所以不管是已有的key还是新增的key都能监测到</font>
+
+   Proxy是外界访问该数据的时候设置的一层代理，外界对数据的任何操作必须要通过这层拦截。
+
 ---
 
 ### Proxy VS Object.defineProperty
 
-1. Object.defineProperty无法一次性监听对象所有属性，必须通过遍历或者递归来实现
+1. `Object.defineProperty`无法一次性监听对象所有属性，必须通过遍历或者递归来实现。而`Proxy`中，如果有多层属性嵌套的话，只有访问某个属性的时候才会递归处理下一级的属性
 
    ```javascript
    let girl = {
@@ -45,9 +71,9 @@ var newProxy = new Proxy(target,handler);
    })
    ```
 
-   
+   ---
 
-2. Object.defineProperty无法监听新增的属性
+2. `Object.defineProperty`无法监听新增的属性
 
    + Proxy可以监听到新增加的属性，而Object.defineProperty不可以，需要自己手动再去添加一次监听，因此在Vue中想动态监听属性，一般使用Vue.set
 
@@ -63,7 +89,7 @@ var newProxy = new Proxy(target,handler);
      })
       // Object.defineProperty
         Object.keys(girl).forEach(key => {
-          Object.defineProperty(girl, key, {
+          Object.defineProperty(girl, key, { // 必须要知道拦截的key是什么，所以无法监听到新增的属性
             set() {},
             get() {}
          })
@@ -72,7 +98,9 @@ var newProxy = new Proxy(target,handler);
      girl.hobby = "game"
      ```
 
-3. Object.defineProperty无法响应数组的操作
+   ---
+
+3. `Object.defineProperty`无法响应数组的操作
 
    + Object.defineProperty可以监听数组的变化，但是对push、shift、pop、unshift进行响应，Vue中通过重写Array上的方法实现监听
 
@@ -94,7 +122,7 @@ var newProxy = new Proxy(target,handler);
 
      
 
-   + 对于新增的数组项，Object.defineProperty无法监听到
+   + 对于新增的数组项，`Object.defineProperty`无法监听到
 
      ```javascript
      const arr = [1,2];
@@ -121,6 +149,8 @@ var newProxy = new Proxy(target,handler);
          get() {}
      })
      ```
+
+   ---
 
 4. Proxy拦截方法更多
 
