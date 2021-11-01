@@ -8,13 +8,13 @@
 
 ---
 
-#### Object.defineProperty
+##### Object.defineProperty
 
 Vue的数据响应式原理是基于JS方法`Object.defineProperty()`来实现的，该方法不兼容IE8和FF22以下版本的浏览器，这也就是为什么Vue只能在这些版本之上的浏览器运行的原因。
 
 ---
 
-#### 语法
+##### 语法
 
 `Object.defineProperty(obj,prop,description)`
 
@@ -49,7 +49,7 @@ Vue的数据响应式原理是基于JS方法`Object.defineProperty()`来实现�
 
 ---
 
-#### 简单响应式的实现
+##### 简单响应式的实现
 
 1. `Dep`：被观察类，用来生成被观察者
 2. `Watcher`：观察者类，用来生成观察者
@@ -57,7 +57,7 @@ Vue的数据响应式原理是基于JS方法`Object.defineProperty()`来实现�
 
 ---
 
-#### 具体实现
+##### 具体实现
 
 ① Dep被观察者类
 
@@ -123,13 +123,13 @@ class Observer{
 
 ---
 
-#### 参考链接
+##### 参考链接
 
 [Good](https://segmentfault.com/a/1190000038921922)
 
 ---
 
-#### 总结
+##### 总结
 
 1. Vue的响应式基于一种发布-订阅的技术：
 
