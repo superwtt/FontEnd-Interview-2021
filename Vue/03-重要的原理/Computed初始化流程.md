@@ -1,6 +1,6 @@
 #### Computed
 
-Vue中的计算属性
+Vue中的计算属性，不建议直接在`template`中写大量的计算代码，比如`{{this.firstName + ‘ ‘ + this.lastName}}`。因为在模板中放入太多声明逻辑会让模板本身过重，尤其当在页面中使用大量复杂的逻辑表达式处理数据时，会对页面可维护性造成很大的影响，而computed的设计初衷也正是解决此类问题
 
 ---
 
@@ -257,10 +257,15 @@ sharedPropertyDefinition = {
 #### 总结
 
 1. 当组件开始初始化的时候，`computed`和`data`会建立自己的`响应系统`，通过`Observer`遍历`data/computed`中的每个属性`get/set`数据拦截
-2. 初始化`computed`会调用`initComputed`函数
-   + 注册一个Watcher实例，并在内部实例化一个Dep消息订阅器作后续收集依赖
-   + 流程：`initComputed` -> `defineComputed` 添加属性描述符get/set-> `createComputedGetter` -> 完成属性描述符的定义 
-   + 响应式的求值
+2. 初始化`computed`会调用`initComputed`函数，流程如下：
+   + `initComputed` ：注册一个Watcher观察者实例，并在内部实例化一个Dep消息订阅器作后续收集依赖。内部继续调用`defineComputed` 
+   + `defineComputed`：内部调用 `createComputedGetter`，添加属性描述符get/set
+   +  `createComputedGetter` ：返回一个计算后的属性描述符：
+     + `watcher.depend()`向自身的消息订阅器dep的subs中添加订阅者
+     + `watcher.evaluate`执行getter函数求值
+   + 完成属性描述符的定义 
+
+   + 属性变化，触发set，然后调用dep.notify()方法，遍历dep中所有的订阅者，逐个调用watcher.update()方法，完成响应式的更新
 3. <font style="color:blue">当某个属性发生变化，触发set拦截函数，然后调用自身消息订阅器dep的notify方法，遍历当前dep中保存着所有订阅者watcher的subs数组，逐个调用watcher的update方法，完成响应式更新</font>
 
 ---
