@@ -384,21 +384,132 @@ Object.defineProperty(vm, 'sum', {
 
 
 
+---
 
+#### 总结
 
+1. 初始化时：
 
+   + 计算属性在初始化的时候，会实例一个计算watcher用来跟踪该计算属性，里面有一个字段dirty，这个字段表示是否需要重新求值，默认为true，因为第一次访问计算属性肯定是要求值的
 
+   + 求值调用的是watcher.evaluate()函数，该函数会在求值完成之后，将dirty置为false，那么下次以同样的方式访问该属性时，就不需要重新求值 而是直接返回之前的值，这就是缓存的原理
 
+2. 更新时：
 
+   + 在读取计算属性的getter函数时，发现getter函数读取的是data里返回的响应式属性count，那么就会继续触发`count`的`get`劫持
 
+     ```javascript
+     sum(){
+       return this.count + 1
+     }
+     ```
 
+     
 
+   + 在`count`的劫持里面，会收集所有count的依赖，根据响应式原理，在给count添加响应式劫持的时候，get用来收集所有的依赖，set用来通知依赖的更新，我们看看`notify()`函数做了什么
 
+     ```javascript
+     Object.defineProperty(vm, 'count', {
+       get: function reactiveGetter () {
+         const value = val
+         // Dep.target 此时就是计算watcher
+         if (Dep.target) {
+           // 收集依赖
+           dep.depend()
+         }
+         return value
+       },  
+       set: function reactiveSetter (newVal) {
+           val = newVal
+           // 触发 count 的 dep 的 notify
+           dep.notify()
+         }
+       })
+     })
+     
+     // notify()函数
+     class Dep {
+       subs = []
+       
+       notify () {
+         for (let i = 0, l = subs.length; i < l; i++) {
+           subs[i].update() // 把 subs 里保存的 watcher 依次去调用它们的 update 方法
+         }
+       }
+     }
+     
+     ```
 
+   + `notify()`函数主要就是遍历所有的subs依赖，依次去调用它们的`update`方法，对于计算属性来说，它的`update`方法就是将**<font style="color:red">`dirty`</font>**变成true
 
+     ```javascript
+     // 计算属性的update方法
+     update () {
+       if (this.lazy) {
+         this.dirty = true
+       }
+     }
+     ```
 
+     **<font style="color:red">`dirty`变成true</font>**了之后，计算属性读取自身的getter函数，去执行watcher.evaluate()的时候，就会重新求值this.get()了，也就是实现了数据的更新
 
+     ```javascript
+     if (watcher) {
+           // 只有dirty了才会重新求值  
+           if (watcher.dirty) {
+             watcher.evaluate() // 计算求值，设置Dep.target
+           }
+           if (Dep.target) {
+             watcher.depend() // 依赖收集
+           }
+           return watcher.value // 最后返回计算出来的值
+         }
+     ```
 
+---
 
 #### 如何阻止缓存
 
+计算属性有个cache字段，将cache变成false即可关闭Vue的计算属性缓存
+
+```javascript
+export function defineComputed (
+  target: any,
+  key: string,
+  userDef: Object | Function
+) {
+  const shouldCache = !isServerRendering()
+  if (typeof userDef === 'function') {
+    sharedPropertyDefinition.get = shouldCache
+      ? createComputedGetter(key)
+      : userDef
+    sharedPropertyDefinition.set = noop
+  } else {
+      // 如果cache字段是false的话，直接执行get函数，就没有下面复杂的判断逻辑了
+    sharedPropertyDefinition.get = userDef.get
+      ? shouldCache && userDef.cache !== false
+        ? createComputedGetter(key)
+        : userDef.get
+      : noop
+    sharedPropertyDefinition.set = userDef.set
+      ? userDef.set
+      : noop
+  }
+  if (process.env.NODE_ENV !== 'production' &&
+      sharedPropertyDefinition.set === noop) {
+    sharedPropertyDefinition.set = function () {
+      warn(
+        `Computed property "${key}" was assigned to but it has no setter.`,
+        this
+      )
+    }
+  }
+  Object.defineProperty(target, key, sharedPropertyDefinition)
+}
+```
+
+---
+
+#### 参考链接
+
+https://cloud.tencent.com/developer/article/1614090
