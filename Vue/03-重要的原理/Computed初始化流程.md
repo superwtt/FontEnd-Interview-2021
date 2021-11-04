@@ -261,7 +261,8 @@ sharedPropertyDefinition = {
    + `initComputed` ：注册一个Watcher观察者实例，并在内部实例化一个Dep消息订阅器作后续收集依赖。内部继续调用`defineComputed` 
    + `defineComputed`：内部调用 `createComputedGetter`，添加属性描述符get/set
    +  `createComputedGetter` ：返回一个计算后的属性描述符：
-     + `watcher.depend()`向自身的消息订阅器dep的subs中添加订阅者
+     + `watcher.depend()`向自身的消息订阅器dep的subs中
+     + 添加订阅者
      + `watcher.evaluate`执行getter函数求值
    + 完成属性描述符的定义 
 
