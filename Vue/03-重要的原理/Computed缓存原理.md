@@ -96,49 +96,42 @@ evaluate () {
 }
 ```
 
+---
+
+##### Dep.target变更为 渲染watcher
+
+（`Dep.target`表示当前正在运行的watcher）
+
+这里进入到`this.get()`，首先要明白一点，在模板中读取`{{sum}}`变量的时候，全局的`Dep.target`应该是`渲染Watcher`
 
 
 
+①  全局的`Dep.target`状态是用一个栈`targetStack`来保存，便于前进和回退`Dep.target`，至于什么时候回退，下面的函数可以看到：
 
+```javascript
+// 此时的 Dep.target 是 渲染watcher，targetStack 是 [ 渲染watcher ] 
+get () {
+  pushTarget(this)
+  let value
+  const vm = this.vm
+  try {
+    value = this.getter.call(vm, vm)
+  } finally {
+    popTarget()
+  }
+  return value
+}
+```
 
+解析：
 
++ 首先刚进去就是`pushTarget`，把`计算watcher`自身置为`Dep.target`，等待依赖收集。执行完`pushTarget(this)`之后，`Dep.target`变更为 `计算watcher`。此时的 Dep.target 是 计算watcher，targetStack 是 [ 渲染watcher，计算watcher ]
 
++ 然后会执行到 `value = this.getter.call(vm, vm)`，就是用户传入sum的函数
 
++ sum函数读取`this.count`，触发`count`的`get`劫持
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  
 
 ② count是一个响应式属性，这里会触发count的get劫持
 
@@ -177,7 +170,231 @@ depend () {
 
 解析：
 
-+ 这里其实是调用`Dep.target.addDep(this)`去收集
++ 这里是调用`Dep.target.addDep(this)`去收集，绕回到`计算watcher`的`addDep`函数上去了
+
+  ```javascript
+  // watcher 的 addDep函数
+  addDep (dep: Dep) {
+    // 这里做了一系列的去重操作 简化掉 
+    
+    // 这里会把 count 的 dep 也存在自身的 deps 上
+    this.deps.push(dep)
+    // 又带着 watcher 自身作为参数
+    // 回到 dep 的 addSub 函数了
+    dep.addSub(this)
+  }
+  ```
+
++ 又回到`dep`上去了
+
+  ```javascript
+  class Dep {
+    subs = []
+  
+    addSub (sub: Watcher) {
+      this.subs.push(sub)
+    }
+  }
+  ```
+
+  这样就保存了`计算watcher`作为count的dep里的依赖了。
+
+④ 经历了这样的收集流程后，此时的一些状态：
+
+   1. sum的计算watcher
+
+      ```javascript
+      {
+          deps: [ count的dep ],
+          dirty: false, // 求值完了 所以是false
+          value: 2, // 1 + 1 = 2
+          getter: ƒ sum(),
+          lazy: true
+      }
+      ```
+
+      
+
+   2. count的dep
+
+      ```javascript
+      {
+          subs: [ sum的计算watcher ]
+      }
+      ```
+
+此时求值结束，回到计算watcher的getter函数
+
+```javascript
+get () {
+  pushTarget(this)
+  let value
+  const vm = this.vm
+  try {
+    value = this.getter.call(vm, vm)
+  } finally {
+    // 此时执行到这里了
+    popTarget()
+  }
+  return value
+}
+```
+
+执行到了`popTarget`，`计算watcher`出栈
+
+---
+
+##### Dep.target变更为渲染watcher
+
+（此时的 Dep.target 是 渲染watcher，targetStack 是 [ 渲染watcher ] ）
+
+上面的函数执行完毕，返回2这个value，此时对于sum属性的get访问还没结束
+
+```javascript
+Object.defineProperty(vm, 'sum', { 
+    get() {
+          // 此时函数执行到了这里
+          if (Dep.target) {
+            watcher.depend()
+          }
+          return watcher.value
+        }
+    }
+})
+```
+
+此时的`Dep.target`当然是有值得，就是`渲染watcher`，所以进入了`watcher.depend()`逻辑，这一步相当关键
+
+```javascript
+// watcher.depend
+depend () {
+  let i = this.deps.length
+  while (i--) {
+    this.deps[i].depend()
+  }
+}
+```
+
+还记得刚刚的 `计算watcher` 的形态吗？它的deps里保存了count的dep。也就是说，又会调用 `count` 上的 `dep.depend()`
+
+```javascript
+class Dep {
+  subs = []
+  
+  depend () {
+    if (Dep.target) {
+      Dep.target.addDep(this)
+    }
+  }
+}
+```
+
+这次的 `Dep.target` 已经是 `渲染watcher` 了，所以这个 `count` 的 dep 又会把 `渲染watcher` 存放进自身的 `subs` 中。
+
+`count的dep`:
+
+```
+{
+    subs: [ sum的计算watcher，渲染watcher ]
+}
+```
+
+
+
+那么来到了此题的重点，这时候 `count` 更新了，是如何去触发视图更新的呢？
+
+再回到 `count` 的响应式劫持逻辑里去：
+
+```javascript
+// 在闭包中，会保留对于 count 这个 key 所定义的 dep
+const dep = new Dep()
+
+// 闭包中也会保留上一次 set 函数所设置的 val
+let val
+
+Object.defineProperty(vm, 'count', {
+  set: function reactiveSetter (newVal) {
+      val = newVal
+      // 触发 count 的 dep 的 notify
+      dep.notify()
+    }
+  })
+})
+```
+
+好，这里触发了我们刚刚精心准备的 `count` 的 dep 的 `notify` 函数，感觉离成功越来越近了。
+
+```javascript
+class Dep {
+  subs = []
+  
+  notify () {
+    for (let i = 0, l = subs.length; i < l; i++) {
+      subs[i].update()
+    }
+  }
+}
+```
+
+这里的逻辑就很简单了，把 `subs` 里保存的 watcher 依次去调用它们的 `update` 方法，也就是
+
+1. 调用 `计算watcher` 的 update
+2. 调用 `渲染watcher` 的 update
+
+##### 计算watcher 的 update
+
+```javascript
+update () {
+  if (this.lazy) {
+    this.dirty = true
+  }
+}
+```
+
+wtf，就这么一句话…… 没错，就仅仅是把 `计算watcher` 的 `dirty` 属性置为 true，静静的等待下次读取即可。
+
+##### 渲染watcher 的 update
+
+这里其实就是调用 `vm._update(vm._render())` 这个函数，重新根据 `render` 函数生成的 `vnode` 去渲染视图了。
+
+而在 `render` 的过程中，一定会访问到 `sum` 这个值，那么又回回到 `sum` 定义的 `get` 上：
+
+```javascript
+Object.defineProperty(vm, 'sum', { 
+    get() {
+        const watcher = this._computedWatchers && this._computedWatchers[key]
+        if (watcher) {
+          // ✨上一步中 dirty 已经置为 true, 所以会重新求值
+          if (watcher.dirty) {
+            watcher.evaluate()
+          }
+          if (Dep.target) {
+            watcher.depend()
+          }
+          // 最后返回计算出来的值
+          return watcher.value
+        }
+    }
+})
+```
+
+由于上一步中的响应式属性更新，触发了 `计算 watcher` 的 `dirty` 更新为 true。 所以又会重新调用用户传入的 `sum` 函数计算出最新的值，页面上自然也就显示出了最新的值。
+
+至此为止，整个计算属性更新的流程就结束了。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
