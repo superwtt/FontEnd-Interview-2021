@@ -177,14 +177,28 @@ patchVnode (oldVnode, vnode) {
 
 
 
+---
+
+#### 具体的diff分析
+
+设置key和不设置key的区别：
+
+不设置key，newCh和oldCh只会进行头尾两端的相互比较。设置了key后，除了头尾两端的比较外，还会从用key生成的对象`oldKeyToIdx`中查找匹配的节点，所以为节点设置key可以更高效的利用dom
+
+1. 不设置key：
+
+![](https://raw.githubusercontent.com/superwtt/MyFileRepository/main/image/Vue/不设置key.png)
 
 
 
+2. 设置key，b节点得到了复用
 
+   ![](https://raw.githubusercontent.com/superwtt/MyFileRepository/main/image/Vue/设置key.png)
 
+---
 
 #### 总结
 
-
+https://zhuanlan.zhihu.com/p/76384873
 
 https://segmentfault.com/a/1190000021896771
