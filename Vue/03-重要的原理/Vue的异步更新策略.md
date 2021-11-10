@@ -72,7 +72,7 @@ function queueWatcher(watcher: Watcher) {
 
 ② `flushSchedulerQueue`
 
-`flushScheduler`是下一个tick（tick是指宏任务）的时候的回调函数，主要就是去执行watcher中的run方法更新视图
+`flushScheduler`是下一个tick（tick是指宏任务）时候的回调函数，它会把queue中所有的watcher取出来并执行相应的视图更新
 
 ```javascript
 // 更新视图的具体方法
@@ -99,6 +99,7 @@ function flushSchedulerQueue() {
 解析：
 
 + Vue在调用`Watcher`更新视图时，并不会直接进行更新，而是把需要更新的`Watcher`加入到`Queue`队列里，然后把具体更新的方法`flushSchedulerQueue`传给nextTick进行调用
++ `nextTick`内部会先将更新方法执行完，微任务队列先放置了一个DOM更新，再调用`timerFunc()`函数执行回调，微任务队列又放置了一个cb函数，此时微任务队列是**[DOM更新，cb回调]**
 
 ---
 
@@ -124,21 +125,23 @@ Vue.nextTick(function () {
 
 解析：
 
-+ 当设置`vm.mssage = 'new message'`的时候，该组件并不会立即进行渲染，而是在dep.notify()了watcher之后，被异步推到了调度者队列中，等`nextTick`的时候进行更新
++ 当设置`vm.mssage = 'new message'`的时候，打印结果是false，足以证明Vue中DOM的更新并非同步
++ 该组件并不会立即进行渲染，而是在dep.notify()了watcher之后，被异步推到了调度者队列中，等`nextTick`的时候进行更新
 + `nextTick`则是去尝试原生的`Promise,then`和`MutationObserver`，如果都不支持，会采用`setTimeout()进行异步更新`
 
 ---
 
 #### 总结
 
-Vue中更新DOM是异步的：
+Vue中DOM的更新是异步的：
 
 1. 原因：如果DOM的更新是同步的，数据一变化就里面通知DOM更新，将会产生大量的视图渲染，应用的性能也会下降
 2. 流程：当Vue中数据发生变化时
    + 触发Data.set()
    + 调用dep.notify()
    +  Dep 会遍历所有相关的 Watcher 执行 update 方法
-   + update方法调用的是queueWatcher，将watcher推入更新队列
+   + update方法调用的是queueWatcher，将去重后的watcher推入更新队列
+   + 调用` nextTick(flushSchedulerQueue)`。**<font style="color:red">nextTick内部是先进行DOM的更新，再执行开发者传入this.$nextTick的回调的</font>**
 
 
 

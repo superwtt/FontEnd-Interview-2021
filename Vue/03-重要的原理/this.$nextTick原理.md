@@ -192,9 +192,9 @@ export const nextTick = (function () {
 
 当Vue中的数据发生变化时，为什么能在$nextTick里面获取到最新的DOM？
 
-1. Vue的更新
+1. Vue中DOM的更新是异步的
 
-2. nextTick的执行时机，涉及到JS的事件循环机制
+2. nextTick的执行时机，涉及到JS的事件循环机制（在一个事件循环中发生的所有数据的改变都会在下一个事件循环的tick中来触发视图的更新）
 
    
 
@@ -204,9 +204,9 @@ Data更新 -> Data.set -> dep.notify -> watcher.update -> 将当前watcher添加
 
 **nextTick的执行时机**
 
-由Vue的更新流程可知，Data触发的更新压入WatcherQueue，然后把具体的更新方法 `flushSchedulerQueue `传给 `nextTick`进行调用。
+由Vue的更新流程可知，Data触发的更新压入WatcherQueue，然后**`调用一次nextTick`**，把具体的更新方法 `flushSchedulerQueue `传给 `nextTick`进行调用。
 
-`nextTick`内部会先将更新方法执行完，微任务队列先放置了一个DOM更新，再调用`timerFunc()`函数，微任务队列又放置了一个cb函数，此时微任务队列是**[DOM更新，cb回调]**
+`nextTick`内部会先将更新方法执行完，微任务队列先放置了一个DOM更新，再调用`timerFunc()`函数执行回调，微任务队列又放置了一个cb函数，此时微任务队列是**[DOM更新，cb回调]**
 
 根据先来后到原则，Data的更新执行完生成了新的DOM，接下来执行`this.nextTick`的回调函数时，就能获取到更新后的DOM
 
