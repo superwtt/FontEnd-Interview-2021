@@ -203,13 +203,14 @@ patchVnode (oldVnode, vnode) {
 #### 总结
 
 1. Vue2.0中diff的流程就是调用patch的流程：
-
    + 先使用key看看新旧两个vnode值不值得比较，如果不值得比较，直接删除旧的节点创建新的节点。如果值得比较，就进入patchNode打补丁的环节。
    + 如果值得比较，就会调用`updateChildren`。`updateChildren`是Vue diff算法的核心：首尾两端比较，一共有4种比较方式，直到startIndex>endIndex才结束比较。将比较的结果直接打补丁patchNode在最终的DOM上
 
-   
+![](https://raw.githubusercontent.com/superwtt/MyFileRepository/main/image/Vue/key的作用.png)
 
+---
 
+#### 参考链接
 
 https://github.com/chanshiyucx/blog/issues/71
 
