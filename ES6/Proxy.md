@@ -16,7 +16,51 @@ var newProxy = new Proxy(target,handler);
 // Object.defineProperty(target, key, sharedPropertyDefinition)
 ```
 
-##### 语法解析
+1. `handler`解析：
+
+   + `get(target,proKey,receiver)`：拦截对象属性的读取
+
+   + `set(target,proKey,value,receiver)`：拦截对象属性的设置
+
+   + `has(target,proKey)`：拦截`proKey in proxy`的操作，返回一个布尔值
+
+   + `deleteProperty(target,proKey)`：拦截`delete proxy[propKey]`的操作，返回一个布尔值
+
+   + ownKeys(target)：拦截`Object.keys(proxy)`、`for...in`等循环，返回一个数组
+
+   + getOwnPropertyDescriptor(target, propKey)：拦截`Object.getOwnPropertyDescriptor(proxy, propKey)`，返回属性的描述对象
+
+   + defineProperty(target, propKey, propDesc)：拦截`Object.defineProperty(proxy, propKey, propDesc）`，返回一个布尔值
+
+   + preventExtensions(target)：拦截`Object.preventExtensions(proxy)`，返回一个布尔值
+
+   + getPrototypeOf(target)：拦截`Object.getPrototypeOf(proxy)`，返回一个对象
+
+   + isExtensible(target)：拦截`Object.isExtensible(proxy)`，返回一个布尔值
+
+   + setPrototypeOf(target, proto)：拦截`Object.setPrototypeOf(proxy, proto)`，返回一个布尔值
+
+   + apply(target, object, args)：拦截 Proxy 实例作为函数调用的操作
+
+   + construct(target, args)：拦截 Proxy 实例作为构造函数调用的操作
+
+     ```javascript
+     var person = {
+       name: "张三"
+     };
+     
+     var proxy = new Proxy(person, {
+       get: function(target, propKey) {
+         return Reflect.get(target,propKey)
+       }
+     });
+     
+     proxy.name // "张三"
+     ```
+
+---
+
+#### Proxy和Object.defineProperty语法解析
 
 1. `Object.defineProperty`
 
@@ -120,12 +164,10 @@ var newProxy = new Proxy(target,handler);
      })
      ```
 
-     
-
    + 对于新增的数组项，`Object.defineProperty`无法监听到
 
      ```javascript
-     const arr = [1,2];
+  const arr = [1,2];
      // Proxy监听数组
      arr = new Proxy(arr,{
          get(){}
@@ -149,7 +191,7 @@ var newProxy = new Proxy(target,handler);
          get() {}
      })
      ```
-
+   
    ---
 
 4. Proxy拦截方法更多
