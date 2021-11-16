@@ -113,35 +113,21 @@ asyncReadFile();
    // Error：出错了
    ```
 
-   
+   解析：
 
-5. de
+   + async函数 f 执行后，await 后面的 Promise对象会抛出一个错误对象，导致 catch方法 的回调函数被调用。
 
-6. de
+   + await命令后面的Promise对象，运行结果可能是rejected，所以最好把await命令放在`try...catch`代码块中
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+     ```javascript
+     async function f() {
+       try {
+         await new Promise(function (resolve, reject) {
+           throw new Error('出错了');
+         });
+       } catch(e) {
+       }
+       return await('hello world');
+     }
+     ```
 
