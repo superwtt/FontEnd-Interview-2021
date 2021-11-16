@@ -331,7 +331,7 @@ const promise = new Promise(function(resolve,reject){});
    + 当我们在一个 then 中return了一个参数，参数未知，需判断，这个return出来新的promise就是onFulfilled()或者onRejected()的值
    + 规定onFulfilled()或者onRejected()的值即第一个then返回的值叫做x，判断x的函数叫做`resolvePromise`
      + 首先要看看 x 是不是promise
-     + 如果是，则取它的结构作为新的promise2成功的结果
+     + 如果是，则取它的结果作为新的promise2成功的结果
      + 如果是普通值，直接作为 promise2 成功的结果
      + 所以要比较 x 和 promise2
      + resolvePromise的参数有promise2（默认返回的promise）、x（我们自己`return`的对象）、resolve、reject
@@ -369,7 +369,7 @@ const promise = new Promise(function(resolve,reject){});
 
    
 
-6. 实现resolvePromise函数：
+6. 实现 resolvePromise 函数：
 
    + x 不能是null
    + x是普通值，直接 resolve(x)
@@ -612,12 +612,4 @@ const promise = new Promise(function(resolve,reject){});
 [VeryGood](https://developer.aliyun.com/article/613412)
 
 [Good](https://juejin.cn/post/6844904094516150285)
-
-
-
-
-
-
-
-
 
