@@ -170,16 +170,6 @@ patchVnode (oldVnode, vnode) {
 
 
 
-
-
-
-
-
-
-
-
-
-
 ---
 
 #### 具体的diff分析
