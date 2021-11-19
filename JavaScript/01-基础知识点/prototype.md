@@ -112,22 +112,67 @@ Person.prototype.constructor === Person
 
 4. `p1.constrcutor===Person.prototype.constructor`：因为 p1 上没有 constructor 这个属性，当我们访问这个属性的时候，就会沿着它的原型链向上查找，到 Person.prototype 上发现有一个 constructor属性，于是输出 Person
 
+5. 控制台输出如下：
+
+   ![](https://oscimg.oschina.net/oscnet/d258ac1fa45ae77a1cb887c87940ee3871b.jpg)
+
+   解析：
+
+   + Person.prototype打印的是Person这个构造函数的原型对象
+   + Person.prototype.constructor打印的是prototype所在的构造函数
+   + Person.prototype.__ proto __打印的是构造函数Person所指向的原型对象
+   + Person.prototype._ proto __.constructor打印的是Person这个构造函数所指向的原型对象的构造函数，这里是Object构造函数
+   + Person.prototype.__ proto __ .__ proto __打印的是Object的原型对象，此时是null
+   + JavaScript中，所有的对象都继承自Object，即那些对象都是Object对象的实例
+
+   
+
+---
+
+#### 面试题常问
+
+方法写在Object上，与写在Object.prototype上有什么区别（方法写在构造函数上与写在原型对象上有什么区别）？
+
++ <font color=Brown2 >实例方法、静态方法：直接定义在类/构造函数上的，是静态方法，通过类/构造函数直接能够访问，定义在prototype上的叫做实例方法，只能通过创建实例访问，并且每次创建实例的时候都会实例化一次</font>
+
+
++ <font color=PeachPuff3 >为什么有的写成实例方法，有的写成静态方法：有些方法是不需要实例化的，只要类就存在，比如Array.isArray()，如果我们写在原型上，只有数组的实例才会有，那么就没有判断的意义了。一般用作Helper函数，不需要操作类中属性的，写成静态方法。需要访问类内部属性的，写成实例方法</font>
+
+
++ <font color=Brown1 >同样是实例方法，写在类/构造函数内部和写在原型对象上有什么区别：定义在类/构造函数内部的方法，会在每一个实例上克隆（实例化）一遍；定义在原型对象上的方法，会让所有实例共享这个属性，不会在每个实例内部重新定义这个方法</font>
+
++ <font color=PaleVioletRed >如果我们需要创建很多个对象，对象上还有许多方法，那么为了节省内存，我们可以把这些方法都定义在prototype指向的原型对象上。区别就在于共享和每个实例都创建一份 </font>
+
++ <font color=RosyBrown1 >如果类/构造函数中有一些方法，我们既不想让所有实例都实例化一遍，又不想让实例共享，那么我们就只能把它写成静态的方法。</font>
+
++ ES5写法如下：
+
+  ```JavaScript
+  function Person(){
+      this.getAge = function(){};  // 实例方法
+      this.getName = function(){}; // 实例方法
+  }
+  Person.prototype.getSchool = function(){}; // 原型方法
+  Person.getInfo = function(){}; // 静态方法
+  ```
+
+  ES6写法如下：
+
+  ```JavaScript
+  class Person(){
+      static getName(){
+          // 静态方法
+      }
+      getAge(){
+          // 实例方法
+      }
+  }
+  ```
+
 ---
 
 #### <font color=red >注意点</font>
 
 1. __ proto __ 与prototype之间的关系：__ proto __ 是指[[prototype]]，因为现在还没有标准的方法能够访问到[[prototype]]，但是主流浏览器都支持__ proto __ ，所以我们用__ proto __ 来确定实例和实例的原型之间的关系
-2. 
 
-
-
-
-
-
-
-
-
-
-
-
-
+   
