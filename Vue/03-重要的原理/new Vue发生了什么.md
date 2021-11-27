@@ -336,9 +336,25 @@ export default class VNode {
 
 
 
+---
+
+#### 总结
+
+`new Vue`的过程其实就是，将从Vue这个构造函数实例化出来的Vue实例，渲染到页面的过程。其中包括了：
+
++ 初始化数据：data、props、computed、methods、watch、生命周期等，并执行以下 beforeCreate 生命周期
++ 挂载：将应用挂载到 el 标签指定的元素上
++ 编译
++ render：把实例渲染成vnode
++ vnode
++ patch：把vnode打补丁到页面
++ DOM
+
+的过程
 
 
 
+---
 
 #### 参考链接
 

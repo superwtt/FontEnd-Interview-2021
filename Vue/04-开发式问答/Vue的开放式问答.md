@@ -134,12 +134,158 @@ Vue的每一个功能，都可以抽离出来当成一个js库去使用，比如
 1. 如何部署：
    + 前后端分离的模式下，前后端是独立部署的，前端只需要将构建的文件夹上传至目标服务器指定的目录下就行。
 2. 404问题：Vue项目在本地时运行正常，但部署到服务器上的时候刷新页面出现了404错误。404错误意味着链接指向的资源不存在，并且只有`history`模式下出现这个问题
-   +  
-   + 
 
+---
 
+### 你的项目中是怎么做性能优化的
 
+主要体现在我上家公司的一个项目：打包很慢，71s，首屏时间也很长
 
+1. 打包慢的问题：
+
+   + 提升基础环境版本，把 npde/npm 的版本都看看，能提升的提升一下
+
+   + 使用``webpack-bundle-analyzer`图形化界面，看了下到底哪里比较慢，发现项目中引入了jquery以及vue全家桶和elementui框架在图形化中占据的面积特别大
+
+   + 将jquery、vue、vuerouter、moment这种不经常改动的库每次不用重新打包，下次打包直接引用即可。配置DLLPlugin和 DllReferencePlugin， 将引用的依赖提取。
+
+     + 第一步，编写一个dll的配置文件
+
+     ```javascript
+     // 编写一个dll的配置文件，去打包dll文件
+     const path = require('path')
+     const DllPlugin = require('webpack/lib/DllPlugin')
+     const { srcPath, distPath } = require('./paths')
+     
+     module.exports = {
+       mode: 'development',
+       // JS 执行入口文件
+       entry: {
+         // 以 React为例 模块的放到一个单独的动态链接库
+         react: ['react', 'react-dom']
+       },
+       output: {
+         // 输出的动态链接库的文件名称，[name] 代表当前动态链接库的名称，
+         // 也就是 entry 中配置的 react 和 polyfill
+         filename: '[name].dll.js',
+         // 输出的文件都放到 dist 目录下
+         path: distPath,
+         // 存放动态链接库的全局变量名称，例如对应 react 来说就是 _dll_react
+         // 之所以在前面加上 _dll_ 是为了防止全局变量冲突
+         library: '_dll_[name]',
+       },
+       plugins: [
+         // 接入 DllPlugin
+         new DllPlugin({
+           // 动态链接库的全局变量名称，需要和 output.library 中保持一致
+           // 该字段的值也就是输出的 manifest.json 文件 中 name 字段的值
+           // 例如 react.manifest.json 中就有 "name": "_dll_react"
+           name: '_dll_[name]',
+           // 描述动态链接库的 manifest.json 文件输出时的文件名称
+           path: path.join(distPath, '[name].manifest.json'),
+         }),
+       ],
+     }
+     ```
+
+     + 第二步，在webpack中配置映射关系，防止打包时再次引用npm包
+
+       ```javascript
+       // 第一，引入 DllReferencePlugin
+       const DllReferencePlugin = require('webpack/lib/DllReferencePlugin');
+        plugins: [
+         //告诉 Webpack 使用了哪些动态链接库
+               new DllReferencePlugin({
+                   // 描述 react 动态链接库的文件内容
+                   manifest: require(path.join(distPath, 'react.manifest.json')),
+               }),
+        ]
+       ```
+
+       
+
+   + 没有改动的js文件，走缓存：使用cache-loader如果文件没有改动则使用缓存或者使用hash计算文件变动，如果文件被改变，则hash的值改变，在上线后，浏览器访问时没有改变的文件会命中缓存，从而达到性能优化的目的，使用方式如下：
+
+     ```javascript
+     output: {
+        filename: 'bundle.[contentHash:8].js',  // 打包代码时，加上 hash 后缀
+        path: distPath
+     },
+     ```
+
+     
+
+   + 一些公共的代码：在打包时，提取公共的代码，并实现代码分割，这样公共代码只要打包一次。对于我们项目来说，引用了一个多次计算活动积分的文件，那么这个就可以提取出来，主要还是webpack的配置，optimazation
+
+     ```javascript
+       optimization: {
+           
+             // 分割代码块
+            splitChunks: {
+             chunks: "async”,//默认作用于异步chunk，值为all/initial/async/function(chunk),值为function时第一个参数为遍历所有入口chunk时的chunk模块，chunk._modules为chunk所有依赖的模块，通过chunk的名字和所有依赖模块的resource可以自由配置,会抽取所有满足条件chunk的公有模块，以及模块的所有依赖模块，包括css
+             minSize: 30000,  //表示在压缩前的最小模块大小,默认值是30kb
+             minChunks: 1,  // 表示被引用次数，默认为1；
+              maxAsyncRequests: 5,  //所有异步请求不得超过5个
+             maxInitialRequests: 3,  //初始话并行请求不得超过3个
+             automaticNameDelimiter:'~',//名称分隔符，默认是~
+             name: true,  //打包后的名称，默认是chunk的名字通过分隔符（默认是～）分隔
+             cacheGroups: { //设置缓存组用来抽取满足不同规则的chunk,下面以生成common为例
+              common: {
+              name: 'common',  //抽取的chunk的名字
+              chunks(chunk) { //同外层的参数配置，覆盖外层的chunks，以chunk为维度进行抽取
+              },
+              test(module, chunks) {  //可以为字符串，正则表达式，函数，以module为维度进行抽取，只要是满足条件的module都会被抽取到该common的chunk中，为函数时第一个参数是遍历到的每一个模块，第二个参数是每一个引用到该模块的chunks数组。自己尝试过程中发现不能提取出css，待进一步验证。
+              },
+             priority: 10,  //优先级，一个chunk很可能满足多个缓存组，会被抽取到优先级高的缓存组中
+            minChunks: 2,  //最少被几个chunk引用
+            reuseExistingChunk: true，//  如果该chunk中引用了已经被抽取的chunk，直接引用该chunk，不会重复打包代码
+            enforce: true  // 如果cacheGroup中没有设置minSize，则据此判断是否使用上层的minSize，true：则使用0，false：使用上层minSize
+            }
+         }
+     }
+             }
+     ```
+
+   + 大图片统一放在cdn上，小图压缩
+
+   + 多线程打包Happypack
+
+2. 首屏加载时间很长的问题：解决了项目打包比较慢的问题，其实已经轻量化了，首页加载的几个大的文件都小了很多，其次我还做了一些其他优化来提高首屏加载时间：
+
+   + 做了路由懒加载
+   + 图片cdn
+   + UI框架按需引用
+   + 代码层面的优化：
+     + 合理使用v-if和v-show
+     + 合理使用watch和computed
+     + 使用v-for必须添加key, 最好为唯一id, 避免使用index, 且在同一个标签上，v-for不要和v-if同时使用
+     + 定时器的销毁。可以在beforeDestroy()生命周期内执行销毁事件；也可以使用$once这个事件侦听器，在定义定时器事件的位置来清除定时器。详细见vue官网
+
+---
+
+##### 总结
+
+1. 打包时间慢：
+   + node/npm升级
+   + webpack-bundle-anylzar
+   + jquery/vue/router
+   + 没有改动的js文件
+   + jquery/vue-router那些库
+   + 计算积分的公共文件
+   + 图片
+   + 多线程打包
+2. 首页加载慢：
+   + 基于打包时间慢，解决了一些大文件的体积，减小了入口文件的体积，另外开启了一个gzip的压缩
+   + 路由懒加载，用到再去加载
+   + UI框架按需引用
+   + 代码层面的优化
+
+---
+
+#### 项目中你遇到哪些难题？解决方案是什么？
+
+1. 上一个项目，因为要跟外国合作，他们没有采用前后端分离的形式，所以每次调试，都要打包发布，才能看到效果，再加上打包时间很长，导致效率特别低，所以就解决了打包时间慢的问题。并且不用手动发布，而是直接打包到指定文件夹，打包完成就可以看到效果，跟热更新一样
+2. 企业微信开发，因为用户群体只是一些零售人员，所以其实生态不是特别全，在跟微信的开发人员沟通的时候，发现其实有好多不兼容的问题他们自己也不知道。这就考验自己的协调能力，怎么把一个原本答应下来的需求，转换方案去实现
 
 
 
