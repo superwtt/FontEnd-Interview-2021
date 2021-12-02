@@ -126,15 +126,16 @@ const promise = new Promise(function(resolve,reject){});
 
 `Promise`构造函数存在以下方法：
 
-+ `all()`
++ `all()`：有一个失败就会进catch
 + `race()`
 + `resolve()`
 + `reject()`
 + `try()`
++ `allSettled()`：不管成功还是失败 都能执行回调函数
 
 
 
-1. `all()`：`Promise.all()`方法用于将多个`Promise实例`，包装成一个新的`Promise实例`
+1. `all()`：`Promise.all()`方法用于将多个`Promise实例`，包装成一个新的`Promise实例`。如果其中一个失败了，整个promise链就会跳出
 
    ```javascript
    const p = Promise.all([p1,p2,p3])
