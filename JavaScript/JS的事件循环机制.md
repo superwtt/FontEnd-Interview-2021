@@ -103,6 +103,8 @@
    // 执行啦
    ```
 
+4. `setTimeout`只需要进入一次队列，不会造成内存溢出，`setInterval`会通知执行多次代码，导致内存溢出。
+
 ---
 
 #### Promise与process.nextTick(callback)

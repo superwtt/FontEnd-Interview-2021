@@ -44,7 +44,7 @@ flex: 0 1 auto代表什么意思？
 
 <font style="color:red">`flex：flex-grow|flex-shrink|flex-basis`</font>
 
-代表，该子容器，不设置扩展比例，设置伸缩比例为1:1伸缩，基本大小为自动大小
+代表，该子容器，不设置扩展比例，设置收缩比例为1:1伸缩，基本大小为自动大小
 
 ---
 
